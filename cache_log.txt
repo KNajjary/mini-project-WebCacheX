@@ -1,8 +1,26 @@
-Cache Server Log - Started at 2025-12-12 20:18:03.995343
+Cache Server Log - Started at 2025-12-12 23:14:21.910815
 ================================================================================
-[2025-12-12 20:18:50.900] Event: NEW_CONNECTION | URL: 127.0.0.1:52315 | Thread: CacheThread-1 | Thread: CacheThread-1
-[2025-12-12 20:18:50.928] Event: REQUEST | URL: /index.html | Thread: CacheThread-1 | Method: GET, Thread: CacheThread-1
-[2025-12-12 20:18:50.929] Event: MISS | URL: /index.html | Thread: CacheThread-1 | Thread: CacheThread-1
-[2025-12-12 20:18:50.930] Event: FORWARDING | URL: /index.html | Thread: CacheThread-1 | Connecting to web server
-[2025-12-12 20:18:52.979] Event: FORWARDED | URL: /index.html | Thread: CacheThread-1 | Status: 200, Size: 253 bytes
-[2025-12-12 20:18:52.984] Event: SAVED | URL: /index.html | Thread: CacheThread-1 | TTL: 10s, Cache size: 1
+[2025-12-12 23:15:06.754] Event: NEW_CONNECTION | URL: 127.0.0.1:53506 | Thread: CacheThread-1 | Thread: CacheThread-1
+[2025-12-12 23:15:06.759] Event: REQUEST | URL: /index.html | Thread: CacheThread-1 | Method: GET, Thread: CacheThread-1
+[2025-12-12 23:15:06.765] Event: MISS | URL: /index.html | Thread: CacheThread-1 | Thread: CacheThread-1
+[2025-12-12 23:15:06.767] Event: FORWARDING | URL: /index.html | Thread: CacheThread-1 | Connecting to web server
+[2025-12-12 23:15:08.849] Event: FORWARDED | URL: /index.html | Thread: CacheThread-1 | Status: 200, Type: text/html, Size: 253 bytes
+[2025-12-12 23:15:08.851] Event: SAVED | URL: /index.html | Thread: CacheThread-1 | TTL: 10s, Type: text/html, Cache size: 1
+[2025-12-12 23:15:12.836] Event: NEW_CONNECTION | URL: 127.0.0.1:53518 | Thread: CacheThread-1 | Thread: CacheThread-1
+[2025-12-12 23:15:12.837] Event: NEW_CONNECTION | URL: 127.0.0.1:53519 | Thread: CacheThread-2 | Thread: CacheThread-2
+[2025-12-12 23:15:12.841] Event: REQUEST | URL: /index.html | Thread: CacheThread-2 | Method: GET, Thread: CacheThread-2
+[2025-12-12 23:15:12.850] Event: HANDLER_ERROR | URL: 127.0.0.1:53519 | Thread: CacheThread-2 | Error: too many values to unpack (expected 2)
+[2025-12-12 23:15:12.842] Event: REQUEST | URL: /index.html | Thread: CacheThread-1 | Method: GET, Thread: CacheThread-1
+[2025-12-12 23:15:12.851] Event: NEW_CONNECTION | URL: 127.0.0.1:53520 | Thread: CacheThread-3 | Thread: CacheThread-3
+[2025-12-12 23:15:12.858] Event: HANDLER_ERROR | URL: 127.0.0.1:53518 | Thread: CacheThread-1 | Error: too many values to unpack (expected 2)
+[2025-12-12 23:15:12.860] Event: REQUEST | URL: /index.html | Thread: CacheThread-3 | Method: GET, Thread: CacheThread-3
+[2025-12-12 23:15:12.870] Event: HANDLER_ERROR | URL: 127.0.0.1:53520 | Thread: CacheThread-3 | Error: too many values to unpack (expected 2)
+[2025-12-12 23:15:12.873] Event: NEW_CONNECTION | URL: 127.0.0.1:53521 | Thread: CacheThread-4 | Thread: CacheThread-4
+[2025-12-12 23:15:12.877] Event: REQUEST | URL: /index.html | Thread: CacheThread-4 | Method: GET, Thread: CacheThread-4
+[2025-12-12 23:15:12.884] Event: HANDLER_ERROR | URL: 127.0.0.1:53521 | Thread: CacheThread-4 | Error: too many values to unpack (expected 2)
+[2025-12-12 23:15:12.886] Event: NEW_CONNECTION | URL: 127.0.0.1:53522 | Thread: CacheThread-3 | Thread: CacheThread-3
+[2025-12-12 23:15:12.890] Event: REQUEST | URL: /index.html | Thread: CacheThread-3 | Method: GET, Thread: CacheThread-3
+[2025-12-12 23:15:12.898] Event: HANDLER_ERROR | URL: 127.0.0.1:53522 | Thread: CacheThread-3 | Error: too many values to unpack (expected 2)
+[2025-12-12 23:15:41.250] Event: NEW_CONNECTION | URL: 127.0.0.1:53529 | Thread: CacheThread-1 | Thread: CacheThread-1
+[2025-12-12 23:15:41.253] Event: REQUEST | URL: /index.html | Thread: CacheThread-1 | Method: GET, Thread: CacheThread-1
+[2025-12-12 23:15:41.256] Event: HANDLER_ERROR | URL: 127.0.0.1:53529 | Thread: CacheThread-1 | Error: too many values to unpack (expected 2)

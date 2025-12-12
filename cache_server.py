@@ -70,22 +70,30 @@ def get_data_from_cache(url):
     """دریافت داده از کش"""
     cache_lock.acquire()
     try:
-        return cache[url][0]
+        return cache[url][0], cache[url][2]
     finally:
         cache_lock.release()
 
 #==============================================================
-def save_to_cache(url, data, ttl=10):#TTL stands for Time To Live #time is in sec
+def save_to_cache(url, data, content_type, ttl=10):#TTL stands for Time To Live #time is in sec
     """ذخیره داده در کش با TTL مشخص"""
     
     expiry = time.time() + ttl #data will expire after ttl sec
 
     cache_lock.acquire()
     try:
-        cache[url] = (data, expiry)
+        cache[url] = (data, expiry, content_type)
     finally:
         cache_lock.release()
-        log_event('SAVED', url, f"TTL: {ttl}s, Cache size: {len(cache)}")
+        log_event('SAVED', url, f"TTL: {ttl}s, Type: {content_type}, Cache size: {len(cache)}")
+#==============================================================
+def get_content_type_from_headers(headers_str): # تابع جدید
+    """استخراج Content-Type از هدرهای HTTP"""  
+    lines = headers_str.split('\r\n')
+    for line in lines:
+        if line.lower().startswith('content-type:'):
+            return line.split(':', 1)[1].strip()
+    return None
 
 #==============================================================
 def forward_to_web_server(url):
@@ -111,6 +119,9 @@ def forward_to_web_server(url):
         
         # خواندن بدنه پاسخ
         response_body = response.read()
+
+        # ★★★ تغییر اصلی: تشخیص نوع محتوا و ذخیره مناسب ★★★
+        content_type = response.getheader('Content-Type', 'text/html')
         
         # ساخت پاسخ کامل HTTP
         status_line = f"HTTP/1.1 {response.status} {response.reason}\r\n"
@@ -120,10 +131,15 @@ def forward_to_web_server(url):
         
         full_response = status_line + headers + "\r\n" + response_body.decode('utf-8', errors='ignore')
         
-        log_event('FORWARDED', url, f"Status: {response.status}, Size: {len(response_body)} bytes")
+        # ★★★ تغییر: جدا کردن هدرها و بدنه برای پردازش بهتر ★★★
+        headers_part = status_line + headers + "\r\n"
+        
+        log_event('FORWARDED', url, f"Status: {response.status}, Type: {content_type}, Size: {len(response_body)} bytes")
         
         conn.close()
-        return full_response
+        
+        # ★★★ تغییر: بازگرداندن سه مقدار: headers_part, body, content_type ★★★
+        return headers_part, response_body, content_type
         
     except Exception as e:
         log_event('ERROR', url, f"Connection failed: {str(e)}")
@@ -185,11 +201,21 @@ def create_http_response(status_code, headers, body):
     response += "\r\n"
     response += body
     
-    return response
+    # ★★★ تغییر: بررسی نوع body برای تعیین Content-Length صحیح ★★★
+    if isinstance(body, bytes):
+        body_length = len(body)
+        response += f"Content-Length: {body_length}\r\n\r\n"
+        return response.encode('utf-8') + body
+    else:
+        body_length = len(body.encode('utf-8'))
+        response += f"Content-Length: {body_length}\r\n\r\n"
+        response += body
+        return response.encode('utf-8')
+    
 
 #==============================================================
 def handle_client(client_socket, addr):
-    """مدیریت اتصال کلاینت در یک نخ جداگانه"""
+    """مدیریت اتصال کلاینت در یک ریسه جداگانه"""
     thread_name = threading.current_thread().name
     log_event('NEW_CONNECTION', f"{addr[0]}:{addr[1]}", f"Thread: {thread_name}")
     
@@ -227,30 +253,38 @@ def handle_client(client_socket, addr):
         
         if is_in_cache_and_valid(url):
             # کش معتبر است
-            data = get_data_from_cache(url)
-            if data:
-                log_event('HIT', url, f"Thread: {thread_name}")
-                # اضافه کردن هدر کش
-                lines = data.split('\r\n')
-                if lines and 'HTTP/1.1' in lines[0]:
-                    # پاسخ HTTP کامل است
-                    response = data
-                    # اضافه کردن هدر X-Cache
-                    header_end = response.find('\r\n\r\n')
+            cached_data = get_data_from_cache(url)
+            if cached_data:
+                log_event('HIT', url, f"Thread: {thread_name}, Type: {content_type}")
+                
+                # ★★★ تغییر: بررسی نوع داده کش شده ★★★
+                if isinstance(cached_data, tuple):
+                    # اگر داده به صورت (headers, body) ذخیره شده
+                    headers_part, body = cached_data
+                    
+                    # اضافه کردن هدر X-Cache به هدرها
+                    header_end = headers_part.find('\r\n\r\n')
                     if header_end != -1:
-                        response = response[:header_end] + '\r\nX-Cache: HIT\r\nX-Cache-Thread: ' + thread_name + response[header_end:]
+                        headers_part = headers_part[:header_end] + f'\r\nX-Cache: HIT\r\nX-Cache-Thread: {thread_name}' + headers_part[header_end:]
+                    
+                    # ارسال پاسخ
+                    client_socket.send(headers_part.encode('utf-8') + body)
                 else:
-                    # ساخت پاسخ HTTP
-                    response = create_http_response(
-                        200,
-                        {
+                    # فرمت قدیمی (فقط برای سازگاری)
+                    lines = cached_data.split('\r\n')
+                    if lines and 'HTTP/1.1' in lines[0]:
+                        header_end = cached_data.find('\r\n\r\n')
+                        if header_end != -1:
+                            cached_data = cached_data[:header_end] + f'\r\nX-Cache: HIT\r\nX-Cache-Thread: {thread_name}' + cached_data[header_end:]
+                        client_socket.send(cached_data.encode('utf-8'))
+                    else:
+                        response_headers = {
                             'Content-Type': 'text/html',
                             'X-Cache': 'HIT',
                             'X-Cache-Thread': thread_name
-                        },
-                        data
-                    )
-                client_socket.send(response.encode())
+                        }
+                        response = create_http_response(200, response_headers, cached_data)
+                        client_socket.send(response)
             else:
                 log_event('CACHE_ERROR', url, "Cached data is None")
                 response = create_http_response(
@@ -258,25 +292,26 @@ def handle_client(client_socket, addr):
                     {'Content-Type': 'text/plain'},
                     "Internal cache error"
                 )
-                client_socket.send(response.encode())
+                client_socket.send(response)
         else:
             # کش معتبر نیست
             log_event('MISS', url, f"Thread: {thread_name}")
-            response = forward_to_web_server(url)
             
-            # پارس کردن پاسخ از سرور اصلی
-            lines = response.split('\r\n')
-            if lines and 'HTTP/1.1 200' in lines[0]:
-                # فقط پاسخ‌های موفق را ذخیره می‌کنیم
-                save_to_cache(url, response, ttl=10)
+            # ★★★ تغییر: دریافت سه مقدار از forward_to_web_server ★★★
+            headers_part, body, content_type = forward_to_web_server(url)
             
-            # ارسال پاسخ به کلاینت
-            # اضافه کردن هدر X-Cache
-            header_end = response.find('\r\n\r\n')
+            # فقط پاسخ‌های موفق را ذخیره می‌کنیم
+            if headers_part.startswith('HTTP/1.1 200'):
+                # ★★★ تغییر: ذخیره در کش با content_type ★★★
+                save_to_cache(url, (headers_part, body), content_type, ttl=10)
+            
+            # اضافه کردن هدر X-Cache به هدرها
+            header_end = headers_part.find('\r\n\r\n')
             if header_end != -1:
-                response = response[:header_end] + '\r\nX-Cache: MISS\r\nX-Cache-Thread: ' + thread_name + response[header_end:]
+                headers_part = headers_part[:header_end] + f'\r\nX-Cache: MISS\r\nX-Cache-Thread: {thread_name}' + headers_part[header_end:]
             
-            client_socket.send(response.encode())
+            # ★★★ تغییر: ارسال صحیح هدرها و بدنه ★★★
+            client_socket.send(headers_part.encode('utf-8') + body)
     
     except Exception as e:
         log_event('HANDLER_ERROR', f"{addr[0]}:{addr[1]}", f"Error: {str(e)}")
